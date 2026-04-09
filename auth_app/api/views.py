@@ -70,12 +70,22 @@ class EmailCheckView(APIView):
 
     permission_classes = [AllowAny]
 
-    def post(self, request):
-        """Return whether the given email exists in the database."""
-        serializer = EmailCheckSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        exists = User.objects.filter(email=serializer.validated_data['email']).exists()
-        return Response({"exists": exists}, status=status.HTTP_200_OK)
+    def get(self, request):
+        """Return user data if email exists, otherwise exists=False."""
+        email = request.query_params.get('email', '')
+        exclude_id = request.query_params.get('id', None)
+        users = User.objects.filter(email=email)
+        if exclude_id:
+            users = users.exclude(id=exclude_id)
+        user = users.first()
+        if user is None:
+            return Response({"exists": False}, status=status.HTTP_200_OK)
+        return Response({
+            "exists": True,
+            "id": user.id,
+            "email": user.email,
+            "fullname": get_fullname(user),
+        }, status=status.HTTP_200_OK)
 
 
 class LogoutView(APIView):
