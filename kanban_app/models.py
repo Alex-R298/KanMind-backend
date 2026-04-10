@@ -17,6 +17,7 @@ class Board(models.Model):
         ordering = ["title"]
 
     def __str__(self):
+        """Return the board title."""
         return self.title
 
 
@@ -53,8 +54,9 @@ class Task(models.Model):
         ordering = ["-id"]
 
     def __str__(self):
+        """Return the task title."""
         return self.title
-    
+
 
 class Comment(models.Model):
     """A comment on a task."""
@@ -70,4 +72,5 @@ class Comment(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
+        """Return a description of the comment."""
         return f"Comment by {self.author} on {self.task}"
