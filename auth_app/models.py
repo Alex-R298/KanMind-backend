@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+"""Models for the auth app. Uses Django's built-in User model."""

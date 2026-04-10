@@ -1,9 +1,12 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import BoardView, TaskView, AssignedToMeView, ReviewingView, BoardDetailView, TaskDetailView
-from auth_app.api.views import EmailCheckView
+"""URL configuration for the Kanban API."""
 
-router = DefaultRouter()
+from django.urls import path
+
+from kanban_app.api.views import (
+    AssignedToMeView, BoardDetailView, BoardView,
+    CommentDetailView, CommentView, ReviewingView,
+    TaskDetailView, TaskView,
+)
 
 urlpatterns = [
     path('boards/', BoardView.as_view(), name='boards'),
@@ -12,4 +15,6 @@ urlpatterns = [
     path('tasks/assigned-to-me/', AssignedToMeView.as_view(), name='assigned-to-me'),
     path('tasks/reviewing/', ReviewingView.as_view(), name='reviewing'),
     path('tasks/<int:pk>/', TaskDetailView.as_view(), name='task-detail'),
+    path('tasks/<int:task_pk>/comments/', CommentView.as_view(), name='comments'),
+    path('tasks/<int:task_pk>/comments/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
 ]

@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from .models import Board, Task
+from .models import Board, Comment, Task
 
 
 @admin.register(Board)
@@ -18,3 +18,10 @@ class TaskAdmin(admin.ModelAdmin):
 
     list_display = ['title', 'status', 'board', 'assigned_to', 'reviewer']
     list_filter = ['status', 'board']
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    """Admin view for Comment model."""
+
+    list_display = ['task', 'author', 'created_at']

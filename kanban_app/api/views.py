@@ -1,72 +1,129 @@
-from rest_framework import viewsets, status
+"""Views for the Kanban board API."""
+
+from django.db.models import Q
+from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from kanban_app.api.serializers import BoardSerializer, TaskSerializer
-from kanban_app.models import Board, Task
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework import generics
-
-
+from kanban_app.api.permissions import IsAuthor
+from kanban_app.api.serializers import (
+    BoardSerializer, CommentSerializer, TaskSerializer,
+)
+from kanban_app.models import Board, Comment, Task
 
 
 class BoardView(APIView):
+    """List boards for the current user or create a new board."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        boards = Board.objects.filter(members=request.user)
+        """Return boards where user is author or member."""
+        boards = Board.objects.filter(
+            Q(author=request.user) | Q(members=request.user),
+        ).distinct()
         serializer = BoardSerializer(boards, many=True)
         return Response(serializer.data)
-    
+
     def post(self, request):
+        """Create a new board with the current user as author."""
         serializer = BoardSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer.save(author=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
+
 class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
+    """Retrieve, update or delete a single board."""
+
+    permission_classes = [IsAuthenticated, IsAuthor]
     queryset = Board.objects.all()
     serializer_class = BoardSerializer
 
 
 class TaskView(APIView):
+    """List tasks for the current user or create a new task."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        task = Task.objects.filter(board__author=request.user)
-        serializer = TaskSerializer(task, many=True)
+        """Return tasks where the user is the board author."""
+        tasks = Task.objects.filter(board__author=request.user)
+        serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
-    
+
     def post(self, request):
+        """Create a new task with the current user as author."""
         serializer = TaskSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer.save(author=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
 
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated]
+    """Retrieve, update or delete a single task."""
+
+    permission_classes = [IsAuthenticated, IsAuthor]
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
 
 class AssignedToMeView(APIView):
+    """List tasks assigned to the current user."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """Return tasks where assigned_to is the current user."""
         assigned = Task.objects.filter(assigned_to=request.user)
         serializer = TaskSerializer(assigned, many=True)
         return Response(serializer.data)
-    
 
 
 class ReviewingView(APIView):
+    """List tasks where the current user is reviewer."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """Return tasks where reviewer is the current user."""
         reviewing = Task.objects.filter(reviewer=request.user)
         serializer = TaskSerializer(reviewing, many=True)
         return Response(serializer.data)
+
+
+class CommentView(APIView):
+    """List or create comments for a specific task."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_pk):
+        """Return all comments for the given task."""
+        comments = Comment.objects.filter(task_id=task_pk)
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, task_pk):
+        """Create a comment on the given task."""
+        serializer = CommentSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer.save(author=request.user, task_id=task_pk)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CommentDetailView(generics.DestroyAPIView):
+    """Delete a single comment."""
+
+    permission_classes = [IsAuthenticated, IsAuthor]
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer

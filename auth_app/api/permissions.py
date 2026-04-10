@@ -1,1 +1,1 @@
-from rest_framework.permissions import BasePermission
+"""Permissions for auth_app. No custom permissions needed."""
