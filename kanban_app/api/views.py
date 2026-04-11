@@ -67,9 +67,15 @@ class TaskView(APIView):
         """Create a new task with the current user as author."""
         board = self._get_board(request)
         if board is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Board not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         if not is_board_member(request.user, board):
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Not a member of this board."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = TaskSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -128,9 +134,15 @@ class CommentView(APIView):
         """Return all comments for the given task."""
         task = self._get_task(task_pk)
         if task is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Task not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         if not is_board_member(request.user, task.board):
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Not a member of this board."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         comments = Comment.objects.filter(task=task)
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data)
@@ -139,9 +151,15 @@ class CommentView(APIView):
         """Create a comment on the given task."""
         task = self._get_task(task_pk)
         if task is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Task not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         if not is_board_member(request.user, task.board):
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Not a member of this board."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = CommentSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
