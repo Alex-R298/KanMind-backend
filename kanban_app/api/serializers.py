@@ -61,14 +61,16 @@ class BoardSerializer(serializers.ModelSerializer):
     ticket_count = serializers.SerializerMethodField()
     tasks_to_do_count = serializers.SerializerMethodField()
     tasks_high_prio_count = serializers.SerializerMethodField()
-    owner_id = serializers.IntegerField(source='author.id', read_only=True)
+    owner_id = serializers.IntegerField(
+        source='author.id', read_only=True,
+    )
 
     class Meta:
         model = Board
         fields = [
             'id', 'title', 'author', 'members', 'member_count',
-            'ticket_count', 'tasks_to_do_count', 'tasks_high_prio_count',
-            'owner_id',
+            'ticket_count', 'tasks_to_do_count',
+            'tasks_high_prio_count', 'owner_id',
         ]
         read_only_fields = ['author']
 
@@ -89,10 +91,19 @@ class BoardSerializer(serializers.ModelSerializer):
         return obj.tasks.filter(priority="high").count()
 
     def to_representation(self, instance):
-        """Return members as nested objects and include tasks."""
+        """Return owner, members and tasks as nested objects."""
         data = super().to_representation(instance)
-        data['members'] = MemberSerializer(instance.members.all(), many=True).data
-        data['tasks'] = TaskSerializer(instance.tasks.all(), many=True).data
+        members = MemberSerializer(
+            instance.members.all(), many=True,
+        ).data
+        data['owner_data'] = MemberSerializer(
+            instance.author,
+        ).data
+        data['members'] = members
+        data['members_data'] = members
+        data['tasks'] = TaskSerializer(
+            instance.tasks.all(), many=True,
+        ).data
         return data
     
 

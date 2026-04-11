@@ -6,11 +6,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from kanban_app.api.permissions import IsAuthor
+from kanban_app.api.permissions import IsAuthor, IsBoardMember
 from kanban_app.api.serializers import (
     BoardSerializer, CommentSerializer, TaskSerializer,
 )
 from kanban_app.models import Board, Comment, Task
+
+
+def is_board_member(user, board):
+    """Return True if user is author or member of the board."""
+    return board.author == user or board.members.filter(
+        pk=user.pk,
+    ).exists()
 
 
 class BoardView(APIView):
@@ -40,7 +47,7 @@ class BoardView(APIView):
 class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
     """Retrieve, update or delete a single board."""
 
-    permission_classes = [IsAuthenticated, IsAuthor]
+    permission_classes = [IsAuthenticated, IsBoardMember, IsAuthor]
     queryset = Board.objects.all()
     serializer_class = BoardSerializer
 
@@ -58,6 +65,11 @@ class TaskView(APIView):
 
     def post(self, request):
         """Create a new task with the current user as author."""
+        board = self._get_board(request)
+        if board is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if not is_board_member(request.user, board):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         serializer = TaskSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -65,6 +77,14 @@ class TaskView(APIView):
             )
         serializer.save(author=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _get_board(self, request):
+        """Return the board from request data or None."""
+        board_id = request.data.get('board')
+        try:
+            return Board.objects.get(pk=board_id)
+        except (Board.DoesNotExist, ValueError, TypeError):
+            return None
 
 
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -106,19 +126,36 @@ class CommentView(APIView):
 
     def get(self, request, task_pk):
         """Return all comments for the given task."""
-        comments = Comment.objects.filter(task_id=task_pk)
+        task = self._get_task(task_pk)
+        if task is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if not is_board_member(request.user, task.board):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        comments = Comment.objects.filter(task=task)
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data)
 
     def post(self, request, task_pk):
         """Create a comment on the given task."""
+        task = self._get_task(task_pk)
+        if task is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if not is_board_member(request.user, task.board):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         serializer = CommentSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST,
             )
-        serializer.save(author=request.user, task_id=task_pk)
+        serializer.save(author=request.user, task=task)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _get_task(self, task_pk):
+        """Return the task or None if not found."""
+        try:
+            return Task.objects.get(pk=task_pk)
+        except Task.DoesNotExist:
+            return None
 
 
 class CommentDetailView(generics.DestroyAPIView):
